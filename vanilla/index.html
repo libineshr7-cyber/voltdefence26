@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script>
+        if (!sessionStorage.getItem('authenticated')) {
+            window.location.href = 'login.html';
+        }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoltDefence – Dynamic Session Trust Monitoring</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {}
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Main styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="min-h-screen md:h-screen md:overflow-hidden bg-[#050811] text-white select-none flex flex-col">
+    <!-- TopNav -->
+    <header class="h-16 shrink-0 bg-[#0a0e1a] border-b border-[#1a2332] flex items-center justify-between px-4 md:px-6">
+        <div class="flex items-center gap-3">
+            <div
+                class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#0ea5e9] to-[#06b6d4] flex items-center justify-center shadow-lg shadow-[#0ea5e9]/30">
+                <i data-lucide="shield" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-semibold text-white tracking-tight">VoltDefence</h1>
+                <p class="text-xs text-gray-500">Security Operations Platform</p>
+            </div>
+        </div>
+
+        <div class="hidden md:flex items-center gap-3 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20">
+            <div class="relative">
+                <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                <div class="absolute inset-0 w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+            </div>
+            <span class="text-sm font-medium text-green-400">Protection Active</span>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="relative">
+                <button id="notification-btn"
+                    class="relative p-2 rounded-lg hover:bg-[#1a2332] transition-colors focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/50">
+                    <i data-lucide="bell" class="w-5 h-5 text-gray-400"></i>
+                    <span id="notification-badge"
+                        class="absolute top-1 right-1 w-2 h-2 bg-[#ef4444] rounded-full ring-2 ring-[#0a0e1a]"></span>
+                </button>
+
+                <!-- Notification Dropdown Menu -->
+                <div id="notification-dropdown"
+                    class="absolute right-0 mt-2 w-80 bg-[#0a0e1a] border border-[#1a2332] rounded-xl shadow-2xl overflow-hidden hidden transition-all z-50 flex flex-col">
+                    <div class="p-4 border-b border-[#1a2332] flex items-center justify-between bg-[#050811]/50">
+                        <h3 class="font-semibold text-white text-sm">Alerts & Risks</h3>
+                        <span id="notification-count"
+                            class="px-2 py-0.5 bg-[#ef4444]/10 text-[#ef4444] text-xs rounded-full font-medium">0</span>
+                    </div>
+                    <div id="notification-list" class="max-h-80 overflow-y-auto divide-y divide-[#1a2332] flex-1">
+                        <!-- Notifications populated via JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="h-8 w-px bg-[#1a2332]"></div>
+
+            <div class="relative">
+                <button id="admin-menu-btn"
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#1a2332] transition-colors focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]/50">
+                    <div
+                        class="w-8 h-8 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center">
+                        <i data-lucide="user" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <span class="text-sm text-gray-300">Admin</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400"></i>
+                </button>
+
+                <!-- Admin Dropdown Menu -->
+                <div id="admin-dropdown"
+                    class="absolute right-0 mt-2 w-48 bg-[#0a0e1a] border border-[#1a2332] rounded-lg shadow-xl overflow-hidden hidden transition-all z-50">
+                    <ul class="py-1">
+                        <li>
+                            <button id="logout-btn"
+                                class="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-[#1a2332] hover:text-red-300 transition-colors">
+                                <i data-lucide="log-out" class="w-4 h-4"></i>
+                                Logout
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
+        <!-- Sidebar -->
+        <aside
+            class="w-full md:w-64 bg-[#0a0e1a] border-b md:border-b-0 md:border-r border-[#1a2332] flex flex-row md:flex-col shrink-0 overflow-x-auto">
+            <nav class="flex-1 p-3 md:p-4 flex flex-row md:flex-col gap-2 md:gap-0 space-y-0 md:space-y-1"
+                id="sidebar-nav">
+                <!-- Populated by JS -->
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-8 overflow-auto">
+            <!-- Page Header -->
+            <div id="page-header" class="mb-6 md:mb-8">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-semibold text-white mb-1 md:mb-2">VoltDefence – Dynamic
+                            Session Trust
+                            Monitoring</h1>
+                        <p class="text-sm md:text-base text-gray-400">Real-time threat monitoring and session analytics
+                        </p>
+                    </div>
+                    <div
+                        class="hidden sm:flex items-center gap-3 px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                        <div class="relative">
+                            <div class="w-2 h-2 bg-cyan-400 rounded-full"></div>
+                            <div class="absolute inset-0 w-2 h-2 bg-cyan-400 rounded-full animate-ping"></div>
+                        </div>
+                        <span class="text-sm font-medium text-cyan-400">Detection Engine Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metrics Overview -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8"
+                id="metrics-container">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- System Status Bar -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 md:mb-8" id="system-status-container">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Main Content Grid - Top Section -->
+            <div id="top-section" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- LiveActivityStream -->
+                <div
+                    class="bg-gradient-to-br from-[#0a0e1a]/90 to-[#1a2332]/50 backdrop-blur-sm border border-[#1a2332] rounded-xl overflow-hidden flex flex-col h-[400px]">
+                    <div class="p-4 border-b border-[#1a2332] flex items-center justify-between shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-[#0ea5e9]/10 flex items-center justify-center">
+                                <i data-lucide="terminal" class="w-4 h-4 text-[#0ea5e9]"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-semibold text-white">Live Session Activity Stream</h2>
+                                <p class="text-xs text-gray-500">Real-time monitoring console</p>
+                            </div>
+                        </div>
+                        <button id="toggle-stream-btn"
+                            class="px-3 py-1 text-xs font-medium rounded-md transition-colors bg-green-500/10 text-green-400 border border-green-500/20">
+                            Live
+                        </button>
+                    </div>
+
+                    <div class="p-4 bg-[#050811] font-mono text-xs flex-1 overflow-y-auto w-full">
+                        <div class="space-y-1" id="activity-logs-container">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DetectionEnginePanel -->
+                <div id="detection-panel"
+                    class="bg-gradient-to-br from-[#0a0e1a]/90 to-[#1a2332]/50 backdrop-blur-sm border rounded-xl p-6 transition-all duration-500 text-cyan-400 border-cyan-500/30 shadow-cyan-500/20 h-[400px]">
+                    <!-- Detection Panel details populated by JS -->
+                </div>
+            </div>
+
+            <!-- Main Content Grid - Middle Section -->
+            <div id="middle-section" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <!-- TrustScoreChart -->
+                <div id="chart-section" class="lg:col-span-2">
+                    <div
+                        class="bg-gradient-to-br from-[#0a0e1a]/90 to-[#1a2332]/50 backdrop-blur-sm border border-[#1a2332] rounded-xl p-6 h-full flex flex-col">
+                        <div class="flex items-center justify-between mb-6 shrink-0">
+                            <div>
+                                <h2 class="text-lg font-semibold text-white" id="chart-title">Trust Score Trends -
+                                    Normal Session</h2>
+                                <p class="text-sm text-gray-400 mt-1">Trust Score vs Time - 24-hour monitoring window
+                                </p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="btn-scenario-normal"
+                                    class="px-3 py-1 text-xs font-medium rounded-md border transition-colors bg-green-500/10 text-green-400 border-green-500/20">
+                                    Normal
+                                </button>
+                                <button id="btn-scenario-compromised"
+                                    class="px-3 py-1 text-xs font-medium rounded-md border transition-colors text-gray-400 border-transparent hover:border-[#1a2332]">
+                                    Compromised
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="w-full flex-1 min-h-[250px] relative">
+                            <canvas id="trustScoreCanvas"></canvas>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t border-[#1a2332] grid grid-cols-3 gap-4 shrink-0"
+                            id="chart-stats">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RiskScanPanel -->
+                <div id="risk-scan-section" class="space-y-6">
+                    <div
+                        class="bg-gradient-to-br from-[#0a0e1a]/90 to-[#1a2332]/50 backdrop-blur-sm border border-[#1a2332] rounded-xl p-6 h-full flex flex-col min-h-[386px]">
+                        <div class="flex items-center gap-3 mb-6 shrink-0">
+                            <div class="w-10 h-10 rounded-lg bg-[#8b5cf6]/10 flex items-center justify-center">
+                                <i data-lucide="shield" class="w-5 h-5 text-[#8b5cf6]"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-semibold text-white">Session Risk Scanner</h2>
+                                <p class="text-xs text-gray-500">Evaluate session risk signals</p>
+                            </div>
+                        </div>
+
+                        <button id="run-scan-btn"
+                            class="w-full py-3 rounded-lg font-medium text-sm transition-all duration-200 mb-6 shrink-0 bg-gradient-to-r from-[#0ea5e9] to-[#06b6d4] text-white hover:shadow-lg hover:shadow-[#0ea5e9]/30">
+                            Run Session Risk Scan
+                        </button>
+
+                        <div id="scan-progress-container" class="mb-6 hidden shrink-0">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-gray-400">Evaluating signals...</span>
+                                <span class="text-xs text-cyan-400 font-medium" id="scan-progress-text">0%</span>
+                            </div>
+                            <div class="h-1 bg-[#1a2332] rounded-full overflow-hidden">
+                                <div id="scan-progress-bar"
+                                    class="h-full bg-gradient-to-r from-[#0ea5e9] to-[#06b6d4] transition-all duration-300"
+                                    style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div id="scan-results-container" class="space-y-2 flex-1 hidden">
+                            <div class="text-xs text-gray-400 mb-3 font-medium">Scan Results:</div>
+                            <div id="scan-results-list" class="space-y-2"></div>
+                        </div>
+
+                        <div id="scan-empty-state" class="text-center py-8 text-gray-500 text-sm flex-1">
+                            Click the button above to run a risk scan
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts Panel -->
+            <div id="alerts-section" class="mb-6">
+                <div
+                    class="bg-gradient-to-br from-[#0a0e1a]/90 to-[#1a2332]/50 backdrop-blur-sm border border-[#1a2332] rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-lg font-semibold text-white">Security Events</h2>
+                            <p class="text-sm text-gray-400 mt-1">Recent alerts and anomalies</p>
+                        </div>
+                        <span id="active-alerts-badge"
+                            class="px-3 py-1 bg-red-500/10 text-red-400 text-xs font-medium rounded-full border border-red-500/20 hidden">
+                            0 Active
+                        </span>
+                    </div>
+                    <div class="space-y-3" id="alerts-container">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sessions Table -->
+            <div id="sessions-section"
+                class="bg-gradient-to-br from-[#0a0e1a]/90 to-[#1a2332]/50 backdrop-blur-sm border border-[#1a2332] rounded-xl overflow-hidden mb-8">
+                <div class="p-6 border-b border-[#1a2332]">
+                    <h2 class="text-lg font-semibold text-white">Active Sessions Monitoring</h2>
+                    <p class="text-sm text-gray-400 mt-1">Real-time session monitoring and risk detection</p>
+                </div>
+                <div class="overflow-x-auto w-full">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b border-[#1a2332]">
+                                <th class="px-6 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Session
+                                    ID</th>
+                                <th class="px-6 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">User
+                                </th>
+                                <th class="px-6 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                    Location</th>
+                                <th class="px-6 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Trust
+                                    Score</th>
+                                <th class="px-6 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Status
+                                </th>
+                                <th class="px-6 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Last
+                                    Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#1a2332]" id="sessions-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Settings Panel -->
+            <div id="settings-section" class="mb-8 hidden">
+                <div
+                    class="bg-gradient-to-br from-[#0a0e1a]/90 to-[#1a2332]/50 backdrop-blur-sm border border-[#1a2332] rounded-xl p-6">
+                    <div class="mb-6">
+                        <h2 class="text-lg font-semibold text-white">Platform Settings</h2>
+                        <p class="text-sm text-gray-400 mt-1">Manage global preferences and security permissions</p>
+                    </div>
+
+                    <div class="space-y-6 max-w-4xl">
+                        <!-- Security Policies -->
+                        <div class="bg-[#050811] rounded-xl p-5 border border-[#1a2332]">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-8 h-8 rounded-lg bg-[#8b5cf6]/10 flex items-center justify-center">
+                                    <i data-lucide="shield-alert" class="w-4 h-4 text-[#8b5cf6]"></i>
+                                </div>
+                                <h3 class="font-medium text-white">Security & Permissions</h3>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-300">Strict IP Enforcement</p>
+                                        <p class="text-xs text-gray-500">Block sessions originating from flagged VPNs or
+                                            anomalous subnets.</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div
+                                            class="w-9 h-5 bg-[#1a2332] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#1a2332] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0ea5e9]">
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-300">Multi-factor Authentication (MFA)
+                                        </p>
+                                        <p class="text-xs text-gray-500">Require MFA for administrative dashboard
+                                            access.</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div
+                                            class="w-9 h-5 bg-[#1a2332] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#1a2332] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0ea5e9]">
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detection Engine -->
+                        <div class="bg-[#050811] rounded-xl p-5 border border-[#1a2332]">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-8 h-8 rounded-lg bg-[#0ea5e9]/10 flex items-center justify-center">
+                                    <i data-lucide="cpu" class="w-4 h-4 text-[#0ea5e9]"></i>
+                                </div>
+                                <h3 class="font-medium text-white">Detection Engine Parameters</h3>
+                            </div>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <label class="text-sm font-medium text-gray-300">Sensitivity Threshold</label>
+                                        <span class="text-xs text-cyan-400 font-mono">85%</span>
+                                    </div>
+                                    <input type="range"
+                                        class="w-full h-1.5 bg-[#1a2332] rounded-lg appearance-none cursor-pointer accent-[#0ea5e9]"
+                                        value="85">
+                                    <p class="text-xs text-gray-500 mt-2">Adjust the baseline trust score threshold to
+                                        flag a session as "Compromised".</p>
+                                </div>
+                                <div class="flex items-center justify-between pt-2">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-300">Heuristic Behavioral Scans</p>
+                                        <p class="text-xs text-gray-500">Continuous background polling for
+                                            micro-navigation anomalies.</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div
+                                            class="w-9 h-5 bg-[#1a2332] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#1a2332] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0ea5e9]">
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Notifications -->
+                        <div class="bg-[#050811] rounded-xl p-5 border border-[#1a2332]">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                    <i data-lucide="bell-ring" class="w-4 h-4 text-amber-400"></i>
+                                </div>
+                                <h3 class="font-medium text-white">Alert Delivery</h3>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-300">Push Notifications</p>
+                                        <p class="text-xs text-gray-500">Show actionable browser popups for critical
+                                            security events.</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div
+                                            class="w-9 h-5 bg-[#1a2332] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#1a2332] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0ea5e9]">
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-300">Email Daily Summaries</p>
+                                        <p class="text-xs text-gray-500">Send an aggregated digest of trust score
+                                            fluctuations.</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer">
+                                        <div
+                                            class="w-9 h-5 bg-[#1a2332] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#1a2332] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0ea5e9]">
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-4">
+                            <button
+                                class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-[#1a2332] transition-colors border border-transparent hover:border-[#1a2332]">Discard
+                                Changes</button>
+                            <button
+                                class="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-[#0ea5e9] to-[#06b6d4] text-white hover:shadow-lg hover:shadow-[#0ea5e9]/30 transition-all font-semibold"
+                                onclick="alert('Settings saved successfully!');">Save Configuration</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Lucide init -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+    <!-- App Logic -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
