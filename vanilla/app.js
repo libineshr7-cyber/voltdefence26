@@ -90,12 +90,36 @@ renderSidebar();
 updateView();
 
 // Metrics Overview
-const metricsData = [
-    { title: "Active Sessions", value: 1247, icon: "activity", trend: "12%", trendUp: true, status: "normal" },
-    { title: "High Risk Sessions", value: 23, icon: "alert-triangle", trend: "8%", trendUp: false, status: "critical" },
-    { title: "Average Trust Score", value: 87, icon: "shield", trend: "3%", trendUp: true, status: "normal" },
-    { title: "Alerts Triggered", value: 142, icon: "users", trend: "15%", trendUp: true, status: "warning" },
+let metricsData = [
+    { title: "Active Sessions", value: 0, icon: "activity", trend: "0%", trendUp: true, status: "normal" },
+    { title: "High Risk Sessions", value: 0, icon: "alert-triangle", trend: "0%", trendUp: false, status: "normal" },
+    { title: "Average Trust Score", value: 100, icon: "shield", trend: "0%", trendUp: true, status: "normal" },
+    { title: "Alerts Triggered", value: 0, icon: "users", trend: "0%", trendUp: true, status: "normal" },
 ];
+
+function updateDashboardStats() {
+    const totalSessions = typeof sessionsData !== 'undefined' ? sessionsData.length : 0;
+    const highRisk = typeof sessionsData !== 'undefined' ? sessionsData.filter(s => s.status === 'critical' || s.status === 'warning').length : 0;
+    const avgScore = totalSessions > 0 ? Math.round(sessionsData.reduce((acc, s) => acc + s.trustScore, 0) / totalSessions) : 0;
+    const totalAlerts = typeof alertsData !== 'undefined' ? alertsData.length : 0;
+
+    metricsData[0].value = totalSessions;
+    metricsData[1].value = highRisk;
+    metricsData[1].status = highRisk > 0 ? 'critical' : 'normal';
+    metricsData[2].value = avgScore;
+    metricsData[2].status = avgScore < 80 ? 'warning' : 'normal';
+    metricsData[3].value = totalAlerts;
+    metricsData[3].status = totalAlerts > 0 ? 'warning' : 'normal';
+
+    renderMetrics();
+
+    if (systemStatuses && systemStatuses.length > 3) {
+        systemStatuses[2].value = totalSessions.toString();
+        systemStatuses[3].value = totalAlerts.toString();
+        systemStatuses[3].color = totalAlerts > 0 ? 'amber' : 'purple';
+        renderSystemStatus();
+    }
+}
 
 const statusColors = {
     normal: 'from-[#0ea5e9]/5 to-[#06b6d4]/5 border-[#0ea5e9]/20',
@@ -142,11 +166,11 @@ function renderMetrics() {
 renderMetrics();
 
 // System Status Bar
-const systemStatuses = [
+let systemStatuses = [
     { title: "System Status", value: "Protected", icon: "shield", color: "green", showPulse: true },
     { title: "Detection Engine", value: "Running", icon: "activity", color: "cyan", showPulse: true },
-    { title: "Sessions Monitored", value: "1,247", icon: "eye", color: "purple", showPulse: false },
-    { title: "Active Alerts", value: "23", icon: "zap", color: "amber", showPulse: false },
+    { title: "Sessions Monitored", value: "0", icon: "eye", color: "purple", showPulse: false },
+    { title: "Active Alerts", value: "0", icon: "zap", color: "amber", showPulse: false },
 ];
 
 function renderSystemStatus() {
@@ -186,18 +210,7 @@ function renderSystemStatus() {
 renderSystemStatus();
 
 // Live Activity Stream
-const initialLogs = [
-    { id: 1, timestamp: '10:02:11', message: 'Session S102 → Burst Activity Detected', type: 'critical' },
-    { id: 2, timestamp: '10:02:14', message: 'Trust Score Adjusted → -25', type: 'warning' },
-    { id: 3, timestamp: '10:02:16', message: 'Navigation Anomaly Observed', type: 'warning' },
-    { id: 4, timestamp: '10:02:18', message: 'Risk Drift Threshold Crossed', type: 'critical' },
-    { id: 5, timestamp: '10:02:22', message: 'Session S102 Flagged for Review', type: 'warning' },
-    { id: 6, timestamp: '10:02:28', message: 'Behavioral Pattern Analysis Complete', type: 'info' },
-    { id: 7, timestamp: '10:02:35', message: 'Timing Signature Mismatch', type: 'warning' },
-    { id: 8, timestamp: '10:02:41', message: 'Suspicious API Access Pattern', type: 'critical' },
-];
-
-let streamLogs = [...initialLogs];
+let streamLogs = [];
 let isPaused = false;
 
 function getLogColor(type) {
@@ -266,10 +279,7 @@ function addLiveLog(message, type = 'info') {
     if (!isPaused) renderLogs();
 }
 
-setInterval(() => {
-    if (isPaused) return;
-    addLiveLog(getRandomLogMessage(), Math.random() > 0.7 ? 'critical' : Math.random() > 0.4 ? 'warning' : 'info');
-}, 3000);
+// Pseudo-random logging interval removed for true real-time tracking
 
 // Detection Engine Panel
 let detectionStatus = 'analyzing';
@@ -370,47 +380,18 @@ setInterval(() => {
 }, 4000);
 
 // Trust Score Chart (Chart.js)
-const normalData = [
-    { time: '00:00', score: 92 },
-    { time: '02:00', score: 91 },
-    { time: '04:00', score: 93 },
-    { time: '06:00', score: 92 },
-    { time: '08:00', score: 94 },
-    { time: '10:00', score: 93 },
-    { time: '12:00', score: 95 },
-    { time: '14:00', score: 94 },
-    { time: '16:00', score: 92 },
-    { time: '18:00', score: 93 },
-    { time: '20:00', score: 91 },
-    { time: '22:00', score: 92 },
-];
-
-const compromisedData = [
-    { time: '00:00', score: 88 },
-    { time: '02:00', score: 86 },
-    { time: '04:00', score: 85 },
-    { time: '06:00', score: 78 },
-    { time: '08:00', score: 65 },
-    { time: '10:00', score: 52 },
-    { time: '12:00', score: 38 },
-    { time: '14:00', score: 29 },
-    { time: '16:00', score: 27 },
-    { time: '18:00', score: 25 },
-    { time: '20:00', score: 26 },
-    { time: '22:00', score: 27 },
-];
-
-let currentScenario = 'normal';
+let realTimeChartData = [];
 let chartInstance = null;
 
 function renderChart() {
     const ctx = document.getElementById('trustScoreCanvas').getContext('2d');
-    const data = currentScenario === 'normal' ? normalData : compromisedData;
-    const lineColor = currentScenario === 'normal' ? '#10b981' : '#ef4444';
+    const data = realTimeChartData;
+    const isCompromised = data.length > 0 && data[data.length - 1].score < 80;
+    const lineColor = isCompromised ? '#ef4444' : '#10b981';
 
     // Create gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 250);
-    gradient.addColorStop(0, currentScenario === 'normal' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)');
+    gradient.addColorStop(0, isCompromised ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)');
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
     if (chartInstance) {
@@ -470,24 +451,26 @@ function renderChart() {
         }
     });
 
-    const avg = Math.round(data.reduce((sum, d) => sum + d.score, 0) / data.length);
-    const max = Math.max(...data.map(d => d.score));
-    const min = Math.min(...data.map(d => d.score));
+    if (data.length > 0) {
+        const avg = Math.round(data.reduce((sum, d) => sum + d.score, 0) / data.length);
+        const max = Math.max(...data.map(d => d.score));
+        const min = Math.min(...data.map(d => d.score));
 
-    document.getElementById('chart-stats').innerHTML = `
-        <div>
-            <p class="text-xs text-gray-400 mb-1">Average Score</p>
-            <p class="text-lg font-semibold text-white">${avg}</p>
-        </div>
-        <div>
-            <p class="text-xs text-gray-400 mb-1">Peak Score</p>
-            <p class="text-lg font-semibold text-green-400">${max}</p>
-        </div>
-        <div>
-            <p class="text-xs text-gray-400 mb-1">Lowest Score</p>
-            <p class="text-lg font-semibold text-red-400">${min}</p>
-        </div>
-    `;
+        document.getElementById('chart-stats').innerHTML = `
+            <div>
+                <p class="text-xs text-gray-400 mb-1">Average Score</p>
+                <p class="text-lg font-semibold text-white">\${avg}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-400 mb-1">Peak Score</p>
+                <p class="text-lg font-semibold text-green-400">\${max}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-400 mb-1">Lowest Score</p>
+                <p class="text-lg font-semibold text-red-400">\${min}</p>
+            </div>
+        `;
+    }
 }
 
 document.getElementById('btn-scenario-normal').onclick = function () {
@@ -617,12 +600,26 @@ runScanBtn.onclick = () => {
 };
 
 // Alerts Panel
-const alertsData = [
-    { id: '1', type: 'critical', icon: 'alert-triangle', title: '🚨 High-Risk Session Detected', description: 'User S102 - Anya Patel: Critical trust score drop to 27', time: '2 min ago' },
-    { id: '2', type: 'warning', icon: 'clock', title: '⚠ Timing Anomaly Observed', description: 'Session S104 showing irregular access patterns', time: '8 min ago' },
-    { id: '3', type: 'warning', icon: 'eye', title: '⚠ Abnormal Navigation Pattern', description: 'Automated behavior suspected in session S106', time: '15 min ago' },
-    { id: '4', type: 'info', icon: 'activity', title: 'Trust Score Fluctuation', description: 'Session S104 - Trust score dropped from 78 to 56', time: '22 min ago' },
-];
+let alertsData = [];
+
+function createAlert(title, description, type) {
+    const iconMap = {
+        'critical': 'alert-triangle',
+        'warning': 'clock',
+        'info': 'info'
+    };
+    alertsData.unshift({
+        id: Date.now().toString(),
+        type: type,
+        icon: iconMap[type] || 'info',
+        title: title,
+        description: description,
+        time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    });
+    if (alertsData.length > 10) alertsData.pop();
+    renderAlerts();
+    if (typeof updateDashboardStats === 'function') updateDashboardStats();
+}
 
 function renderAlerts() {
     const container = document.getElementById('alerts-container');
@@ -714,14 +711,7 @@ function renderAlerts() {
 renderAlerts();
 
 // Sessions Table
-let sessionsData = [
-    { id: 'S101', user: 'Rahul Kumar', trustScore: 94, status: 'normal', statusText: 'Normal', location: 'Mumbai, IN', lastActivity: '10:02:11' },
-    { id: 'S102', user: 'Anya Patel', trustScore: 27, status: 'critical', statusText: '⚠ High Risk', location: 'Unknown', lastActivity: '10:02:18' },
-    { id: 'S103', user: 'Marcus Chen', trustScore: 88, status: 'normal', statusText: 'Normal', location: 'Singapore, SG', lastActivity: '10:02:24' },
-    { id: 'S104', user: 'Sarah Johnson', trustScore: 56, status: 'warning', statusText: 'Anomaly Detected', location: 'London, UK', lastActivity: '10:02:31' },
-    { id: 'S105', user: 'Dev Sharma', trustScore: 91, status: 'normal', statusText: 'Normal', location: 'Bangalore, IN', lastActivity: '10:02:45' },
-    { id: 'S106', user: 'Emma Wilson', trustScore: 42, status: 'warning', statusText: 'Behavioral Change', location: 'New York, US', lastActivity: '10:03:02' },
-];
+let sessionsData = [];
 
 function renderSessions() {
     const tbody = document.getElementById('sessions-tbody');
@@ -933,4 +923,14 @@ if (notificationBtn && notificationDropdown) {
         currentSession.lastActivity = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
         renderSessions();
     });
+
+    // Real-Time dashboard heartbeat interval
+    setInterval(() => {
+        const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        realTimeChartData.push({ time: timeStr, score: currentSession.trustScore });
+        if (realTimeChartData.length > 15) realTimeChartData.shift();
+
+        renderChart();
+        if (typeof updateDashboardStats === 'function') updateDashboardStats();
+    }, 2000);
 })();
