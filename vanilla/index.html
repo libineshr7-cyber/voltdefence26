@@ -25,9 +25,9 @@
     <link rel="stylesheet" href="style.css">
 </head>
 
-<body class="min-h-screen bg-[#050811] text-white">
+<body class="min-h-screen md:h-screen md:overflow-hidden bg-[#050811] text-white select-none flex flex-col">
     <!-- TopNav -->
-    <header class="h-16 bg-[#0a0e1a] border-b border-[#1a2332] flex items-center justify-between px-6">
+    <header class="h-16 shrink-0 bg-[#0a0e1a] border-b border-[#1a2332] flex items-center justify-between px-4 md:px-6">
         <div class="flex items-center gap-3">
             <div
                 class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#0ea5e9] to-[#06b6d4] flex items-center justify-center shadow-lg shadow-[#0ea5e9]/30">
@@ -39,7 +39,7 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-3 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20">
+        <div class="hidden md:flex items-center gap-3 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20">
             <div class="relative">
                 <div class="w-2 h-2 bg-green-400 rounded-full"></div>
                 <div class="absolute inset-0 w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
@@ -99,25 +99,30 @@
         </div>
     </header>
 
-    <div class="flex">
+    <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
         <!-- Sidebar -->
-        <aside class="w-64 bg-[#0a0e1a] border-r border-[#1a2332] flex flex-col min-h-[calc(100vh-64px)]">
-            <nav class="flex-1 p-4 space-y-1" id="sidebar-nav">
+        <aside
+            class="w-full md:w-64 bg-[#0a0e1a] border-b md:border-b-0 md:border-r border-[#1a2332] flex flex-row md:flex-col shrink-0 overflow-x-auto">
+            <nav class="flex-1 p-3 md:p-4 flex flex-row md:flex-col gap-2 md:gap-0 space-y-0 md:space-y-1"
+                id="sidebar-nav">
                 <!-- Populated by JS -->
             </nav>
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 p-8 overflow-auto h-[calc(100vh-64px)]">
+        <main class="flex-1 p-4 md:p-8 overflow-auto">
             <!-- Page Header -->
-            <div id="page-header" class="mb-8">
-                <div class="flex items-center justify-between">
+            <div id="page-header" class="mb-6 md:mb-8">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div>
-                        <h1 class="text-2xl font-semibold text-white mb-2">VoltDefence – Dynamic Session Trust
+                        <h1 class="text-xl md:text-2xl font-semibold text-white mb-1 md:mb-2">VoltDefence – Dynamic
+                            Session Trust
                             Monitoring</h1>
-                        <p class="text-gray-400">Real-time threat monitoring and session analytics</p>
+                        <p class="text-sm md:text-base text-gray-400">Real-time threat monitoring and session analytics
+                        </p>
                     </div>
-                    <div class="flex items-center gap-3 px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                    <div
+                        class="hidden sm:flex items-center gap-3 px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
                         <div class="relative">
                             <div class="w-2 h-2 bg-cyan-400 rounded-full"></div>
                             <div class="absolute inset-0 w-2 h-2 bg-cyan-400 rounded-full animate-ping"></div>
@@ -128,12 +133,13 @@
             </div>
 
             <!-- Metrics Overview -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="metrics-container">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8"
+                id="metrics-container">
                 <!-- Populated by JS -->
             </div>
 
             <!-- System Status Bar -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8" id="system-status-container">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 md:mb-8" id="system-status-container">
                 <!-- Populated by JS -->
             </div>
 
@@ -258,9 +264,9 @@
                             <h2 class="text-lg font-semibold text-white">Security Events</h2>
                             <p class="text-sm text-gray-400 mt-1">Recent alerts and anomalies</p>
                         </div>
-                        <span
-                            class="px-3 py-1 bg-red-500/10 text-red-400 text-xs font-medium rounded-full border border-red-500/20">
-                            3 Active
+                        <span id="active-alerts-badge"
+                            class="px-3 py-1 bg-red-500/10 text-red-400 text-xs font-medium rounded-full border border-red-500/20 hidden">
+                            0 Active
                         </span>
                     </div>
                     <div class="space-y-3" id="alerts-container">
@@ -442,6 +448,7 @@
         lucide.createIcons();
     </script>
     <!-- App Logic -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <script src="app.js"></script>
 </body>
 

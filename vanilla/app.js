@@ -20,8 +20,8 @@ function renderSidebar() {
         const isActive = activeMenu === item.id;
 
         const btnClasses = isActive
-            ? 'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 bg-[#0ea5e9]/10 text-[#0ea5e9] shadow-lg shadow-[#0ea5e9]/20'
-            : 'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-gray-400 hover:bg-[#1a2332] hover:text-gray-200';
+            ? 'w-auto md:w-full shrink-0 flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg transition-all duration-200 bg-[#0ea5e9]/10 text-[#0ea5e9] shadow-lg shadow-[#0ea5e9]/20'
+            : 'w-auto md:w-full shrink-0 flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-lg transition-all duration-200 text-gray-400 hover:bg-[#1a2332] hover:text-gray-200';
 
         const btn = document.createElement('button');
         btn.className = btnClasses;
@@ -459,35 +459,27 @@ function renderChart() {
         document.getElementById('chart-stats').innerHTML = `
             <div>
                 <p class="text-xs text-gray-400 mb-1">Average Score</p>
-                <p class="text-lg font-semibold text-white">\${avg}</p>
+                <p class="text-lg font-semibold text-white">${avg}</p>
             </div>
             <div>
                 <p class="text-xs text-gray-400 mb-1">Peak Score</p>
-                <p class="text-lg font-semibold text-green-400">\${max}</p>
+                <p class="text-lg font-semibold text-green-400">${max}</p>
             </div>
             <div>
                 <p class="text-xs text-gray-400 mb-1">Lowest Score</p>
-                <p class="text-lg font-semibold text-red-400">\${min}</p>
+                <p class="text-lg font-semibold text-red-400">${min}</p>
             </div>
         `;
     }
 }
 
-document.getElementById('btn-scenario-normal').onclick = function () {
-    currentScenario = 'normal';
-    this.className = "px-3 py-1 text-xs font-medium rounded-md border transition-colors bg-green-500/10 text-green-400 border-green-500/20";
-    document.getElementById('btn-scenario-compromised').className = "px-3 py-1 text-xs font-medium rounded-md border transition-colors text-gray-400 border-transparent hover:border-[#1a2332]";
-    document.getElementById('chart-title').innerText = "Trust Score Trends - Normal Session";
-    renderChart();
-};
+document.getElementById('chart-title').innerText = "Trust Score Trends - Live Monitoring Session";
 
-document.getElementById('btn-scenario-compromised').onclick = function () {
-    currentScenario = 'compromised';
-    this.className = "px-3 py-1 text-xs font-medium rounded-md border transition-colors bg-red-500/10 text-red-400 border-red-500/20";
-    document.getElementById('btn-scenario-normal').className = "px-3 py-1 text-xs font-medium rounded-md border transition-colors text-gray-400 border-transparent hover:border-[#1a2332]";
-    document.getElementById('chart-title').innerText = "Trust Score Trends - Compromised Session Detected";
-    renderChart();
-};
+// Hide the scenario toggle buttons since we are real-time now
+const btnNormal = document.getElementById('btn-scenario-normal');
+const btnCompromised = document.getElementById('btn-scenario-compromised');
+if (btnNormal) btnNormal.style.display = 'none';
+if (btnCompromised) btnCompromised.style.display = 'none';
 
 renderChart();
 
@@ -626,20 +618,38 @@ function renderAlerts() {
     const notifList = document.getElementById('notification-list');
     const notifCount = document.getElementById('notification-count');
     const notifBadge = document.getElementById('notification-badge');
+    const activeAlertsBadge = document.getElementById('active-alerts-badge');
 
     if (container) container.innerHTML = '';
     if (notifList) notifList.innerHTML = '';
 
     if (notifCount) notifCount.textContent = alertsData.length;
+
     if (alertsData.length > 0) {
         if (notifBadge) notifBadge.classList.remove('hidden');
+        if (activeAlertsBadge) {
+            activeAlertsBadge.classList.remove('hidden');
+            activeAlertsBadge.textContent = `${alertsData.length} Active`;
+        }
     } else {
         if (notifBadge) notifBadge.classList.add('hidden');
+        if (activeAlertsBadge) activeAlertsBadge.classList.add('hidden');
+
         if (notifList) {
             notifList.innerHTML = `
                 <div class="px-4 py-8 text-center text-gray-500">
                     <i data-lucide="check-circle" class="w-8 h-8 mx-auto mb-2 text-green-500/50"></i>
                     <p class="text-sm">No new alerts or risks</p>
+                </div>
+            `;
+        }
+
+        if (container) {
+            container.innerHTML = `
+                <div class="py-12 text-center text-gray-500">
+                    <i data-lucide="shield-check" class="w-12 h-12 mx-auto mb-3 text-green-500/30"></i>
+                    <p class="text-base font-medium text-gray-400">All Clear</p>
+                    <p class="text-sm mt-1">No security events detected</p>
                 </div>
             `;
         }
@@ -706,6 +716,10 @@ function renderAlerts() {
             notifList.appendChild(div);
         }
     });
+
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
 }
 
 renderAlerts();
@@ -839,10 +853,71 @@ if (notificationBtn && notificationDropdown) {
         lastActivity: 'Active Now'
     };
 
-    // Push into active sessions table at the top
-    sessionsData.unshift(currentSession);
-    renderSessions();
-    addLiveLog(`New Connection Established: ${deviceType} on ${os}`, 'info');
+    // --- CROSS-SESSION SYNC ENGINE (Public MQTT Broker) ---
+    const SYNC_TOPIC = 'voltdefence/demo/sync_sessions_v842';
+    let mqttClient = null;
+    const remoteSessionsMap = new Map();
+
+    if (typeof mqtt !== 'undefined') {
+        mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+
+        mqttClient.on('connect', () => {
+            mqttClient.subscribe(SYNC_TOPIC);
+            addLiveLog('Global peer-to-peer sync engine connected', 'info');
+        });
+
+        mqttClient.on('message', (topic, message) => {
+            if (topic === SYNC_TOPIC) {
+                try {
+                    const data = JSON.parse(message.toString());
+
+                    if (data.type === 'session_update') {
+                        if (data.session.id !== userSessionId) {
+                            remoteSessionsMap.set(data.session.id, data.session);
+                        }
+                    } else if (data.type === 'alert_trigger') {
+                        if (data.sender !== userSessionId) {
+                            createAlert(data.alert.title, data.alert.description, data.alert.type);
+                        }
+                    }
+                } catch (e) { }
+            }
+        });
+    }
+
+    function renderSyncedSessions() {
+        const now = Date.now();
+        const otherSessions = [];
+
+        // Clean out stale sessions
+        for (const [id, session] of remoteSessionsMap.entries()) {
+            if (now - session.heartbeat < 15000) {
+                otherSessions.push(session);
+            } else {
+                remoteSessionsMap.delete(id);
+            }
+        }
+
+        sessionsData = [currentSession, ...otherSessions];
+        renderSessions();
+        if (typeof updateDashboardStats === 'function') updateDashboardStats();
+    }
+
+    function broadcastSession() {
+        currentSession.heartbeat = Date.now();
+        if (mqttClient && mqttClient.connected) {
+            mqttClient.publish(SYNC_TOPIC, JSON.stringify({ type: 'session_update', session: currentSession }));
+        }
+        renderSyncedSessions();
+    }
+
+    // Initialize local broadcast
+    broadcastSession();
+
+    // Cleanup my session on close
+    window.addEventListener('beforeunload', () => {
+        if (mqttClient) mqttClient.end();
+    });
 
     // 1. Fetch IP & Regional Data automatically
     fetch('https://ipapi.co/json/')
@@ -850,6 +925,7 @@ if (notificationBtn && notificationDropdown) {
         .then(data => {
             if (data.ip) {
                 currentSession.location = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
+                broadcastSession(); // Sync location change
                 renderSessions();
 
                 // Add alert for the new connection tracking
@@ -858,10 +934,24 @@ if (notificationBtn && notificationDropdown) {
                 // Flag if IP is VPN or unusual
                 if (data.org && data.org.toLowerCase().includes('vpn')) {
                     addLiveLog(`VPN/Proxy Usage Detected for ${userSessionId}`, 'warning');
+                    createAlert('VPN/Proxy Gateway Detected', `Encrypted proxy network connection observed from ${data.ip}`, 'warning');
+
+                    if (mqttClient && mqttClient.connected) {
+                        mqttClient.publish(SYNC_TOPIC, JSON.stringify({
+                            type: 'alert_trigger',
+                            sender: userSessionId,
+                            alert: {
+                                title: 'VPN/Proxy Gateway Detected',
+                                description: `Encrypted proxy network connection observed from ${data.ip}`,
+                                type: 'warning'
+                            }
+                        }));
+                    }
+
                     currentSession.trustScore -= 10;
                     currentSession.status = 'warning';
                     currentSession.statusText = 'Proxy Detected';
-                    renderSessions();
+                    broadcastSession();
                 }
             }
         })
@@ -875,12 +965,15 @@ if (notificationBtn && notificationDropdown) {
                 const lon = pos.coords.longitude.toFixed(4);
                 addLiveLog(`High-Precision Geolocation Granted: [${lat}, ${lon}]`, 'info');
                 currentSession.location = `GPS: ${lat}, ${lon}`;
+                broadcastSession();
                 renderSessions();
             },
             (err) => {
                 if (err.code === err.PERMISSION_DENIED) {
                     addLiveLog(`Geolocation Permission Denied by User`, 'warning');
+                    createAlert('Location Masking Attempt', `User ${userSessionId} declined geographic positioning telemetry`, 'warning');
                     currentSession.trustScore -= 5;
+                    broadcastSession();
                     renderSessions();
                 }
             }
@@ -902,6 +995,20 @@ if (notificationBtn && notificationDropdown) {
         // Rapid clicking reduces trust score dramatically
         if (clickCount > 4) {
             addLiveLog(`Automation/Bot Behavior Suspected (Rapid Clicks)`, 'critical');
+            createAlert('Aggressive Automation Suspected', `High-velocity structured interactions detected exceeding human patterns on ${deviceType}`, 'critical');
+
+            if (mqttClient && mqttClient.connected) {
+                mqttClient.publish(SYNC_TOPIC, JSON.stringify({
+                    type: 'alert_trigger',
+                    sender: userSessionId,
+                    alert: {
+                        title: `Aggressive Automation Suspected`,
+                        description: `High-velocity structured interactions detected exceeding human patterns on ${deviceType}`,
+                        type: 'critical'
+                    }
+                }));
+            }
+
             currentSession.trustScore = Math.max(0, currentSession.trustScore - 15);
             if (currentSession.trustScore < 50) {
                 currentSession.status = 'critical';
@@ -910,17 +1017,18 @@ if (notificationBtn && notificationDropdown) {
                 currentSession.status = 'warning';
                 currentSession.statusText = 'Anomaly Detected';
             }
-            renderSessions();
             clickCount = 0; // Reset
         }
 
         lastClickTime = now;
         currentSession.lastActivity = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        broadcastSession();
         renderSessions();
     });
 
     document.addEventListener('mousemove', () => {
         currentSession.lastActivity = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        broadcastSession();
         renderSessions();
     });
 
@@ -931,6 +1039,7 @@ if (notificationBtn && notificationDropdown) {
         if (realTimeChartData.length > 15) realTimeChartData.shift();
 
         renderChart();
-        if (typeof updateDashboardStats === 'function') updateDashboardStats();
+        broadcastSession();
+        renderSyncedSessions();
     }, 2000);
 })();
